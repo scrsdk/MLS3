@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(cuid())
+  telegramId       String    @unique
+  username         String?
+  firstName        String
+  lastName         String?
+  languageCode     String    @default("en")
+  countryId        String?
+  energy           Int       @default(50)
+  maxEnergy        Int       @default(100)
+  lastEnergyUpdate DateTime  @default(now())
+  lastDailyBonus   DateTime?
+  pixelsPlaced     Int       @default(0)
+  isVip            Boolean   @default(false)
+  vipExpiresAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  country     Country?     @relation(fields: [countryId], references: [id])
+  pixels      Pixel[]
+  purchases   Purchase[]
+  activities  Activity[]
+}
+
+model Country {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  nameRu       String
+  nameEs       String?
+  flagSvg      String?
+  color        String
+  totalPixels  Int
+  filledPixels Int      @default(0)
+  minX         Int
+  minY         Int
+  maxX         Int
+  maxY         Int
+  geoJson      Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users  User[]
+  pixels Pixel[]
+}
+
+model Pixel {
+  id        String   @id @default(cuid())
+  x         Int
+  y         Int
+  countryId String
+  color     String
+  placedBy  String
+  isAttack  Boolean  @default(false)
+  placedAt  DateTime @default(now())
+
+  country Country @relation(fields: [countryId], references: [id])
+  user    User    @relation(fields: [placedBy], references: [id])
+
+  @@unique([x, y])
+  @@index([countryId])
+  @@index([placedBy])
+}
+
+model Purchase {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // "energy", "vip"
+  amount        Int
+  stars         Int
+  invoiceId     String?
+  status        String   @default("pending") // "pending", "completed", "failed"
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "tap", "attack", "defend", "bonus"
+  data      Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Season {
+  id        String    @id @default(cuid())
+  number    Int       @unique
+  startedAt DateTime
+  endedAt   DateTime?
+  isActive  Boolean   @default(true)
+  winners   Json?     // Top countries data
+  createdAt DateTime  @default(now())
+}

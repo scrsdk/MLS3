@@ -1,0 +1,37 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install and Build Frontend
+      working-directory: ./frontend
+      run: |
+        npm ci
+        npm run build
+    
+    - name: Install and Build Backend
+      working-directory: ./backend
+      run: |
+        npm ci
+        npm run build
+    
+    - name: Deploy to Vercel
+      run: echo "Vercel автоматически деплоит при push"
+      
+    - name: Deploy to Render
+      run: echo "Render автоматически деплоит при push"
