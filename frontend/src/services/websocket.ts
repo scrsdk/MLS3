@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { WebSocketMessage, Pixel, LeaderboardEntry } from '../types';
+import type { WebSocketMessage, Pixel, LeaderboardEntry } from '../types';
 import { useGameStore } from '../store/gameStore';
 
 class WebSocketService {

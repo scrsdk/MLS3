@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Country } from '../types';
+import type { Country } from '../types';
 import { useGameStore } from '../store/gameStore';
 import { gameAPI } from '../services/api';
 import { useTelegram } from '../hooks/useTelegram';

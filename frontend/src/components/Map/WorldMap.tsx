@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useGameStore } from '../../store/gameStore';
-import { Country, Pixel } from '../../types';
+import type { Country, Pixel } from '../../types';
 import { useTelegram } from '../../hooks/useTelegram';
 import { gameAPI } from '../../services/api';
 import wsService from '../../services/websocket';

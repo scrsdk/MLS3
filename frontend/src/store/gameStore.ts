@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, Country, Pixel, LeaderboardEntry, TapEvent } from '../types';
+import type { User, Country, Pixel, LeaderboardEntry, TapEvent } from '../types';
 
 interface GameState {
   // User

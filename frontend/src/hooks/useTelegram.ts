@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TelegramWebApp } from '../types';
+import type { TelegramWebApp } from '../types';
 
 declare global {
   interface Window {
