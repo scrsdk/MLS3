@@ -127,7 +127,7 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="relative h-screen overflow-hidden">
+      <div className="fixed inset-0 bg-gray-900 overflow-hidden">
         <BackgroundEffects intensity="low" />
         <motion.div
           className="flex items-center justify-center h-screen"
@@ -180,7 +180,7 @@ function App() {
 
   if (error) {
     return (
-      <div className="relative h-screen overflow-hidden">
+      <div className="fixed inset-0 bg-gray-900 overflow-hidden">
         <BackgroundEffects intensity="low" />
         <motion.div
           className="flex items-center justify-center h-screen"
@@ -240,9 +240,9 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col relative overflow-hidden">
+    <div className="h-screen w-screen flex flex-col bg-gray-900 relative overflow-hidden" style={{ position: 'fixed', top: 0, left: 0 }}>
       {/* Background Effects */}
-      <BackgroundEffects intensity="medium" />
+      <BackgroundEffects intensity="low" />
       
       {/* Game Header */}
       <motion.div
