@@ -2,7 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 // import App from './App.tsx'
-import App from './AppSafe.tsx' // Временно используем безопасную версию
+// import App from './AppSafe.tsx'
+import App from './AppFixed.tsx' // Исправленная версия без сложных анимаций
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 
 // Глобальный обработчик ошибок
