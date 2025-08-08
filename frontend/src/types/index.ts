@@ -10,6 +10,9 @@ export interface User {
   lastEnergyUpdate: Date;
   pixelsPlaced: number;
   isVip: boolean;
+  level: number;
+  experience: number;
+  coins: number;
   createdAt: Date;
 }
 

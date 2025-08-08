@@ -1,15 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import './styles/gameTheme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --tg-theme-bg-color: #ffffff;
-  --tg-theme-text-color: #000000;
-  --tg-theme-hint-color: #999999;
-  --tg-theme-link-color: #2481cc;
-  --tg-theme-button-color: #2481cc;
-  --tg-theme-button-text-color: #ffffff;
-  --tg-theme-secondary-bg-color: #f1f1f1;
+  /* Telegram theme переменные совместимые с игровой темой */
+  --tg-theme-bg-color: #0a0e27;
+  --tg-theme-text-color: #ffffff;
+  --tg-theme-hint-color: rgba(255, 255, 255, 0.6);
+  --tg-theme-link-color: #00d4ff;
+  --tg-theme-button-color: #00d4ff;
+  --tg-theme-button-text-color: #000000;
+  --tg-theme-secondary-bg-color: rgba(255, 255, 255, 0.05);
 }
 
 * {
@@ -19,19 +23,30 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--tg-theme-bg-color);
-  color: var(--tg-theme-text-color);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100vh;
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  /* Предотвращение pull-to-refresh в Telegram */
 }
 
 #root {
-  width: 100vw;
+  width: 100%;
   height: 100vh;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Smooth scrolling для улучшенного UX */
+  scroll-behavior: smooth;
 }
 
 .no-scrollbar {
