@@ -33,6 +33,7 @@ function App() {
   // Инициализация
   useEffect(() => {
     const init = async () => {
+      console.log('🚀 App init started');
       try {
         setLoading(true);
         
@@ -40,7 +41,7 @@ function App() {
         let authData = initData;
         
         if (!authData) {
-          console.warn('DEBUG MODE: No Telegram data, using test user');
+          console.warn('⚠️ DEBUG MODE: No Telegram data, using test user');
           // Создаем тестовые данные для отладки
           authData = btoa(JSON.stringify({
             user: {
@@ -53,19 +54,27 @@ function App() {
             auth_date: Math.floor(Date.now() / 1000),
             hash: 'test_hash'
           }));
+        } else {
+          console.log('✅ Telegram data found:', authData);
         }
 
+        console.log('🔐 Attempting login...');
         const { token, user: authUser } = await authAPI.loginWithTelegram(authData);
+        console.log('✅ Login successful:', authUser);
         setUser(authUser);
 
         // Подключение WebSocket
+        console.log('🔌 Connecting WebSocket...');
         wsService.connect(token);
 
         // Загрузка данных игры
+        console.log('📊 Loading game data...');
         const [countries, mapData] = await Promise.all([
           gameAPI.getCountries(),
           gameAPI.getMapData(),
         ]);
+        console.log('✅ Countries loaded:', countries.length);
+        console.log('✅ Pixels loaded:', mapData.pixels?.length || 0);
 
         setCountries(countries);
         addPixels(mapData.pixels);
@@ -82,9 +91,15 @@ function App() {
           setShowCountrySelect(true);
         }
 
+        console.log('✅ Initialization complete!');
         setLoading(false);
       } catch (err) {
-        console.error('Init error:', err);
+        console.error('❌ Init error:', err);
+        console.error('Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        });
         setError(`Ошибка: ${err.message || 'Неизвестная ошибка'}`);
         setLoading(false);
       }

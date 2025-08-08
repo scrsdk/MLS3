@@ -33,7 +33,10 @@ api.interceptors.response.use(
 
 export const authAPI = {
   loginWithTelegram: async (initData: string): Promise<{ token: string; user: User }> => {
+    console.log('📡 Calling /auth/telegram with data:', initData.substring(0, 50) + '...');
+    console.log('API URL:', API_URL);
     const { data } = await api.post('/auth/telegram', { initData });
+    console.log('✅ Auth response:', data);
     localStorage.setItem('token', data.token);
     return data;
   },
@@ -45,7 +48,9 @@ export const authAPI = {
 
 export const gameAPI = {
   getCountries: async (): Promise<Country[]> => {
+    console.log('📡 Fetching countries...');
     const { data } = await api.get('/game/countries');
+    console.log('✅ Countries fetched:', data.length);
     return data;
   },
   
@@ -55,7 +60,9 @@ export const gameAPI = {
   },
   
   getMapData: async (): Promise<{ countries: Country[]; pixels: Pixel[] }> => {
+    console.log('📡 Fetching map data...');
     const { data } = await api.get('/game/map');
+    console.log('✅ Map data fetched');
     return data;
   },
   
