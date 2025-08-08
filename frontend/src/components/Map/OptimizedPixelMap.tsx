@@ -67,29 +67,41 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     decreaseEnergy
   } = useGameStore();
 
-  // Инициализация карты
+  // Инициализация карты и wheel обработчик
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     try {
       initializeRendering(canvas);
+      
+      // Добавляем обработчик wheel с passive: false для возможности preventDefault
+      const wheelHandler = (e: WheelEvent) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const centerX = e.clientX - rect.left;
+        const centerY = e.clientY - rect.top;
+        handleWheel(e.deltaY, centerX, centerY);
+      };
+      
+      canvas.addEventListener('wheel', wheelHandler, { passive: false });
+      
+      return () => {
+        canvas.removeEventListener('wheel', wheelHandler);
+        try {
+          cleanupRendering();
+        } catch (error) {
+          console.warn('Ошибка при очистке карты:', error);
+        }
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = 0;
+        }
+      };
     } catch (error) {
       console.error('Ошибка при инициализации карты:', error);
     }
-    
-    return () => {
-      try {
-        cleanupRendering();
-      } catch (error) {
-        console.warn('Ошибка при очистке карты:', error);
-      }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = 0;
-      }
-    };
-  }, [initializeRendering, cleanupRendering]);
+  }, [initializeRendering, cleanupRendering, handleWheel]);
 
   // Обработка изменения размеров
   useEffect(() => {
@@ -402,7 +414,7 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     <div 
       ref={containerRef}
       className={`relative w-full h-full overflow-hidden bg-gray-900 ${className}`}
-      style={{ touchAction: 'manipulation' }}
+      style={{ touchAction: 'none' }}
     >
       {/* Основной canvas карты */}
       <canvas
@@ -412,7 +424,6 @@ export const OptimizedPixelMap: React.FC<Props> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onClick={handleCanvasClick}
-        onWheel={handleMouseWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

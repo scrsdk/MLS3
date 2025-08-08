@@ -82,14 +82,30 @@ export class OffscreenRenderer {
 
   private initializeBuffers(width: number, height: number): void {
     try {
+      // Ограничиваем размеры разумными пределами
+      const maxSize = 2048; // Уменьшаем для стабильности
+      const minSize = 100;
+      
+      const safeWidth = Math.min(Math.max(minSize, Math.floor(width)), maxSize);
+      const safeHeight = Math.min(Math.max(minSize, Math.floor(height)), maxSize);
+      
       // Проверяем, что размеры корректны
-      if (width <= 0 || height <= 0 || width > 8192 || height > 8192) {
-        console.warn('Некорректные размеры буфера:', width, height);
+      if (!isFinite(safeWidth) || !isFinite(safeHeight)) {
+        console.warn('Некорректные размеры буфера, используем значения по умолчанию');
+        this.bufferWidth = 800;
+        this.bufferHeight = 600;
+        this.frontBuffer = new ImageData(800, 600);
+        this.backBuffer = new ImageData(800, 600);
         return;
       }
       
-      this.bufferWidth = Math.floor(width);
-      this.bufferHeight = Math.floor(height);
+      // Проверяем, действительно ли нужно пересоздавать буферы
+      if (this.bufferWidth === safeWidth && this.bufferHeight === safeHeight) {
+        return;
+      }
+      
+      this.bufferWidth = safeWidth;
+      this.bufferHeight = safeHeight;
       this.frontBuffer = new ImageData(this.bufferWidth, this.bufferHeight);
       this.backBuffer = new ImageData(this.bufferWidth, this.bufferHeight);
     } catch (error) {
@@ -133,17 +149,26 @@ export class OffscreenRenderer {
    */
   resize(width: number, height: number): void {
     try {
-      if (this.bufferWidth === width && this.bufferHeight === height) return;
+      // Ограничиваем размеры
+      const maxSize = 2048;
+      const minSize = 100;
       
-      // Проверяем корректность размеров
-      if (width <= 0 || height <= 0 || !isFinite(width) || !isFinite(height)) {
-        console.warn('Некорректные размеры для resize:', width, height);
+      const safeWidth = Math.min(Math.max(minSize, Math.floor(width)), maxSize);
+      const safeHeight = Math.min(Math.max(minSize, Math.floor(height)), maxSize);
+      
+      // Проверяем, действительно ли нужен resize
+      if (this.bufferWidth === safeWidth && this.bufferHeight === safeHeight) {
         return;
       }
       
-      this.offscreenCanvas.width = Math.floor(width);
-      this.offscreenCanvas.height = Math.floor(height);
-      this.initializeBuffers(width, height);
+      // Проверяем корректность размеров
+      if (!isFinite(safeWidth) || !isFinite(safeHeight)) {
+        return;
+      }
+      
+      this.offscreenCanvas.width = safeWidth;
+      this.offscreenCanvas.height = safeHeight;
+      this.initializeBuffers(safeWidth, safeHeight);
       
       // Отменяем текущие задачи, так как размер изменился
       this.renderQueue = [];
