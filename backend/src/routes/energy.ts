@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db/prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Получить статус энергии
 router.get('/status', authenticateToken, async (req: AuthRequest, res, next) => {

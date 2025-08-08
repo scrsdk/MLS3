@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db/prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Получить все страны
 router.get('/countries', async (req, res, next) => {

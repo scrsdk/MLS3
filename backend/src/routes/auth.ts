@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db/prisma';
 import { validateTelegramWebAppData } from '../utils/telegram';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.post('/telegram', async (req, res, next) => {
   try {
