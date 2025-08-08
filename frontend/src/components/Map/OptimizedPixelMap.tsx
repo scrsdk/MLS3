@@ -72,8 +72,52 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     
+    console.log('OptimizedPixelMap: Starting initialization');
+    
     try {
+      // Сначала убедимся что canvas имеет правильные размеры
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      
+      // Рисуем начальный фон чтобы убедиться что canvas работает
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        
+        // Темный фон
+        ctx.fillStyle = '#0a0e27';
+        ctx.fillRect(0, 0, rect.width, rect.height);
+        
+        // Сетка
+        ctx.strokeStyle = 'rgba(0, 212, 255, 0.05)';
+        ctx.lineWidth = 1;
+        
+        const gridSize = 50;
+        for (let x = 0; x < rect.width; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, rect.height);
+          ctx.stroke();
+        }
+        
+        for (let y = 0; y < rect.height; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(rect.width, y);
+          ctx.stroke();
+        }
+        
+        // Текст загрузки
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = '20px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Инициализация карты мира...', rect.width / 2, rect.height / 2);
+      }
+      
       initializeRendering(canvas);
+      setIsInitialized(true);
       
       // Добавляем обработчик wheel с passive: false для возможности preventDefault
       const wheelHandler = (e: WheelEvent) => {
@@ -86,7 +130,17 @@ export const OptimizedPixelMap: React.FC<Props> = ({
       
       canvas.addEventListener('wheel', wheelHandler, { passive: false });
       
+      // Принудительная инициализация карты через несколько мс
+      setTimeout(() => {
+        console.log('OptimizedPixelMap: Force triggering rendering setup');
+        if (!isInitialized) {
+          console.warn('Map not initialized after timeout, trying again...');
+          initializeRendering(canvas);
+        }
+      }, 200);
+      
       return () => {
+        console.log('OptimizedPixelMap: Cleaning up');
         canvas.removeEventListener('wheel', wheelHandler);
         try {
           cleanupRendering();
@@ -146,6 +200,11 @@ export const OptimizedPixelMap: React.FC<Props> = ({
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !offscreenRenderer || !isInitialized) {
+      console.warn('RenderLoop: Missing dependencies', {
+        canvas: !!canvas,
+        offscreenRenderer: !!offscreenRenderer,
+        isInitialized
+      });
       // Очищаем animationFrame если рендерер не готов
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -160,6 +219,7 @@ export const OptimizedPixelMap: React.FC<Props> = ({
       
       // Ограничиваем FPS до 60
       if (deltaTime >= 16.67) {
+        console.log('RenderLoop: Rendering frame at', now);
         offscreenRenderer.renderToCanvas(canvas);
         lastRenderTime.current = now;
       }
@@ -169,7 +229,7 @@ export const OptimizedPixelMap: React.FC<Props> = ({
         animationFrameRef.current = requestAnimationFrame(renderLoop);
       }
     } catch (error) {
-      console.warn('Ошибка в renderLoop, останавливаем рендеринг:', error);
+      console.error('Ошибка в renderLoop, останавливаем рендеринг:', error);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = 0;
@@ -179,6 +239,11 @@ export const OptimizedPixelMap: React.FC<Props> = ({
   
   // Запуск цикла рендеринга
   useEffect(() => {
+    console.log('RenderLoop useEffect triggered', {
+      isInitialized,
+      offscreenRenderer: !!offscreenRenderer
+    });
+    
     if (isInitialized && offscreenRenderer) {
       // Отменяем предыдущий цикл перед запуском нового
       if (animationFrameRef.current) {
@@ -187,10 +252,13 @@ export const OptimizedPixelMap: React.FC<Props> = ({
       }
       
       try {
+        console.log('Starting render loop');
         renderLoop();
       } catch (error) {
         console.error('Ошибка при запуске renderLoop:', error);
       }
+    } else {
+      console.warn('Cannot start render loop: requirements not met');
     }
     
     return () => {
@@ -429,23 +497,33 @@ export const OptimizedPixelMap: React.FC<Props> = ({
         onTouchEnd={handleTouchEnd}
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
         style={{
-          imageRendering: settings.pixelatedRendering && viewport.zoom > 2 ? 'pixelated' : 'auto'
+          imageRendering: settings.pixelatedRendering && viewport.zoom > 2 ? 'pixelated' : 'auto',
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#0a0e27'
         }}
       />
       
       {/* Фиксированный UI поверх карты */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Debug информация */}
-        {showDebugInfo && (
-          <div className="absolute top-4 left-4 bg-black/70 text-white p-3 rounded-lg text-sm font-mono pointer-events-auto">
+        {/* Debug информация - показываем всегда в dev режиме */}
+        {(showDebugInfo || process.env.NODE_ENV === 'development') && (
+          <div className="absolute top-4 left-4 bg-black/70 text-white p-3 rounded-lg text-sm font-mono pointer-events-auto max-w-xs">
+            <div className="text-cyan-400 font-bold mb-2">MAP DEBUG</div>
+            <div>Init: {isInitialized ? '✅' : '❌'}</div>
+            <div>Renderer: {offscreenRenderer ? '✅' : '❌'}</div>
             <div>Zoom: {viewport.zoom.toFixed(2)}x</div>
             <div>Position: ({Math.floor(viewport.x)}, {Math.floor(viewport.y)})</div>
+            <div>Canvas: {viewport.width}x{viewport.height}</div>
             <div>FPS: {performance.fps.toFixed(1)}</div>
             <div>Chunks: {performance.chunksVisible}/{performance.chunksLoaded}</div>
             <div>Frame: {performance.frameTime.toFixed(1)}ms</div>
             {performance.memoryUsage > 0 && (
               <div>Memory: {(performance.memoryUsage / 1024 / 1024).toFixed(1)}MB</div>
             )}
+            <div className="mt-2 text-xs text-white/60">
+              Откройте консоль для логов
+            </div>
           </div>
         )}
         
@@ -547,8 +625,27 @@ export const OptimizedPixelMap: React.FC<Props> = ({
       {/* Loading overlay */}
       {!isInitialized && (
         <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-          <div className="text-white text-xl">
-            Initializing World Map...
+          <div className="text-center">
+            <div className="text-white text-xl mb-4">
+              Initializing World Map...
+            </div>
+            <div className="text-white/60 text-sm">
+              Если карта не загружается, проверьте консоль
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Debug fallback */}
+      {isInitialized && !offscreenRenderer && (
+        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-red-400 text-xl mb-4">
+              Ошибка инициализации рендерера
+            </div>
+            <div className="text-white/60 text-sm">
+              Проверьте консоль для подробностей
+            </div>
           </div>
         </div>
       )}

@@ -185,7 +185,10 @@ export const useMapStore = create<MapState>()(
     initializeRendering: (canvas: HTMLCanvasElement) => {
       const state = get();
       
+      console.log('Initializing rendering...');
+      
       if (state.isInitialized) {
+        console.log('Already initialized, cleaning up first');
         state.cleanupRendering();
       }
       
@@ -193,6 +196,12 @@ export const useMapStore = create<MapState>()(
         const rect = canvas.getBoundingClientRect();
         const width = rect.width * window.devicePixelRatio;
         const height = rect.height * window.devicePixelRatio;
+        
+        console.log('Canvas dimensions:', {
+          displaySize: `${rect.width}x${rect.height}`,
+          pixelSize: `${width}x${height}`,
+          dpr: window.devicePixelRatio
+        });
         
         const chunkSystem = new ChunkSystem();
         const offscreenRenderer = new OffscreenRenderer(width, height);
@@ -208,8 +217,32 @@ export const useMapStore = create<MapState>()(
           }
         });
         
-        // Запускаем обновление чанков
-        get().updateVisibleChunks();
+        console.log('Systems created, updating visible chunks...');
+        
+        // Запускаем обновление чанков с небольшой задержкой
+        setTimeout(() => {
+          const currentState = get();
+          if (currentState.isInitialized) {
+            console.log('Starting initial chunk update...');
+            currentState.updateVisibleChunks();
+            
+            // Принудительно запускаем рендеринг через некоторое время
+            setTimeout(() => {
+              if (currentState.offscreenRenderer) {
+                const fallbackViewport = {
+                  minX: currentState.viewport.x,
+                  minY: currentState.viewport.y,
+                  maxX: currentState.viewport.x + currentState.viewport.width / currentState.viewport.zoom,
+                  maxY: currentState.viewport.y + currentState.viewport.height / currentState.viewport.zoom,
+                  zoom: currentState.viewport.zoom
+                };
+                
+                console.log('Force rendering fallback viewport:', fallbackViewport);
+                currentState.offscreenRenderer.queueRender(fallbackViewport, []);
+              }
+            }, 200);
+          }
+        }, 100);
         
         console.log('Map rendering initialized successfully');
       } catch (error) {
@@ -395,10 +428,20 @@ export const useMapStore = create<MapState>()(
       try {
         const state = get();
         
-        if (!state.chunkSystem || !state.offscreenRenderer || !state.isInitialized) return;
+        console.log('updateVisibleChunks called', {
+          chunkSystem: !!state.chunkSystem,
+          offscreenRenderer: !!state.offscreenRenderer,
+          isInitialized: state.isInitialized
+        });
+        
+        if (!state.chunkSystem || !state.offscreenRenderer || !state.isInitialized) {
+          console.warn('updateVisibleChunks: Missing required systems');
+          return;
+        }
         
         const { viewport } = state;
         if (!viewport || !isFinite(viewport.x) || !isFinite(viewport.y) || !isFinite(viewport.zoom)) {
+          console.warn('updateVisibleChunks: Invalid viewport', viewport);
           return;
         }
         
@@ -410,20 +453,30 @@ export const useMapStore = create<MapState>()(
           zoom: viewport.zoom
         };
         
+        console.log('Viewport bounds calculated:', viewportBounds);
+        
         // Проверяем корректность bounds
         if (!isFinite(viewportBounds.maxX) || !isFinite(viewportBounds.maxY)) {
+          console.warn('updateVisibleChunks: Invalid bounds calculated');
           return;
         }
         
         // Получаем необходимые чанки
         const chunks = state.chunkSystem.getRequiredChunks(viewportBounds);
-        if (!chunks || !Array.isArray(chunks)) return;
+        if (!chunks || !Array.isArray(chunks)) {
+          console.warn('updateVisibleChunks: No chunks returned');
+          return;
+        }
+        
+        console.log(`Found ${chunks.length} required chunks`);
         
         const loadedChunkIds = new Set(
           chunks
             .filter(chunk => chunk && chunk.imageData)
             .map(chunk => chunk.id)
         );
+        
+        console.log(`${loadedChunkIds.size} chunks are loaded`);
         
         set({
           visibleChunks: chunks,
@@ -432,6 +485,7 @@ export const useMapStore = create<MapState>()(
         
         // Запускаем рендеринг
         if (state.offscreenRenderer && chunks.length > 0) {
+          console.log('Queueing render with', chunks.length, 'chunks');
           state.offscreenRenderer.queueRender(viewportBounds, chunks);
         }
         
@@ -446,7 +500,7 @@ export const useMapStore = create<MapState>()(
           chunksVisible: chunks.length
         });
       } catch (error) {
-        console.warn('Ошибка при обновлении чанков:', error);
+        console.error('Ошибка при обновлении чанков:', error);
       }
     }
   }))
@@ -455,11 +509,17 @@ export const useMapStore = create<MapState>()(
 // Подписка на изменения viewport для автоматического обновления чанков
 useMapStore.subscribe(
   (state) => state.viewport,
-  () => {
+  (viewport) => {
+    console.log('Viewport changed:', viewport);
     const store = useMapStore.getState();
     if (store.isInitialized) {
       // Небольшая задержка для debouncing частых обновлений
-      setTimeout(() => store.updateVisibleChunks(), 16);
+      setTimeout(() => {
+        console.log('Triggering chunk update from viewport change');
+        store.updateVisibleChunks();
+      }, 16);
+    } else {
+      console.warn('Viewport changed but map not initialized yet');
     }
   },
   {

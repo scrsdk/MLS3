@@ -249,6 +249,8 @@ export class ChunkSystem {
   private async loadChunk(chunk: ChunkData): Promise<void> {
     if (chunk.isLoading || chunk.imageData) return;
     
+    console.log(`Loading chunk ${chunk.id}`);
+    
     chunk.isLoading = true;
     const controller = new AbortController();
     this.pendingRequests.set(chunk.id, controller);
@@ -260,6 +262,7 @@ export class ChunkSystem {
       if (!controller.signal.aborted && chunkData) {
         chunk.imageData = chunkData;
         chunk.isLoading = false;
+        console.log(`Chunk ${chunk.id} loaded successfully`);
       }
     } catch (error) {
       if (!controller.signal.aborted) {
@@ -273,10 +276,11 @@ export class ChunkSystem {
         try {
           chunk.imageData = new ImageData(this.CHUNK_SIZE, this.CHUNK_SIZE);
           this.generateFallbackTexture(chunk);
+          chunk.isLoading = false;
+          console.log(`Fallback texture created for chunk ${chunk.id}`);
         } catch (fallbackError) {
-          console.warn('Ошибка при создании fallback текстуры:', fallbackError);
+          console.error('Ошибка при создании fallback текстуры:', fallbackError);
         }
-        chunk.isLoading = false;
       }
     } finally {
       this.loadingQueue.delete(chunk.id);
@@ -290,6 +294,8 @@ export class ChunkSystem {
     zoomLevel: number, 
     signal: AbortSignal
   ): Promise<ImageData> {
+    console.log(`Fetching chunk data for (${chunkX}, ${chunkY}) zoom ${zoomLevel}`);
+    
     // Симулируем загрузку с сервера
     await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
     
@@ -301,12 +307,15 @@ export class ChunkSystem {
     const imageData = new ImageData(this.CHUNK_SIZE, this.CHUNK_SIZE);
     this.generateChunkTexture(imageData, chunkX, chunkY, zoomLevel);
     
+    console.log(`Chunk data fetched successfully for (${chunkX}, ${chunkY})`);
     return imageData;
   }
 
   private generateChunkTexture(imageData: ImageData, chunkX: number, chunkY: number, zoomLevel: number): void {
     const data = imageData.data;
     const scale = Math.pow(2, zoomLevel);
+    
+    console.log(`Generating chunk texture for (${chunkX}, ${chunkY}) zoom ${zoomLevel}`);
     
     for (let y = 0; y < this.CHUNK_SIZE; y++) {
       for (let x = 0; x < this.CHUNK_SIZE; x++) {
@@ -320,32 +329,40 @@ export class ChunkSystem {
         const noise3 = this.noise(worldX * 0.1, worldY * 0.1) * 0.25;
         const combined = noise1 + noise2 + noise3;
         
+        let r, g, b;
+        
         if (combined > 0.4) {
           // Горы - коричневый/серый
-          data[idx] = 101 + Math.random() * 20;
-          data[idx + 1] = 67 + Math.random() * 15;
-          data[idx + 2] = 33 + Math.random() * 10;
+          r = Math.floor(101 + Math.random() * 20);
+          g = Math.floor(67 + Math.random() * 15);
+          b = Math.floor(33 + Math.random() * 10);
         } else if (combined > 0.25) {
           // Суша - зеленый
-          data[idx] = 34 + Math.random() * 30;
-          data[idx + 1] = 139 + Math.random() * 30;
-          data[idx + 2] = 34 + Math.random() * 20;
+          r = Math.floor(34 + Math.random() * 30);
+          g = Math.floor(139 + Math.random() * 30);
+          b = Math.floor(34 + Math.random() * 20);
         } else if (combined > 0.1) {
           // Побережье - песочный
-          data[idx] = 194 + Math.random() * 30;
-          data[idx + 1] = 178 + Math.random() * 25;
-          data[idx + 2] = 128 + Math.random() * 20;
+          r = Math.floor(194 + Math.random() * 30);
+          g = Math.floor(178 + Math.random() * 25);
+          b = Math.floor(128 + Math.random() * 20);
         } else {
           // Океан - синий с глубиной
           const depth = Math.max(0, 0.1 - combined);
-          data[idx] = Math.max(0, 20 - depth * 100);
-          data[idx + 1] = Math.max(50, 119 - depth * 50);
-          data[idx + 2] = Math.max(100, 190 - depth * 30);
+          r = Math.max(0, Math.floor(20 - depth * 100));
+          g = Math.max(50, Math.floor(119 - depth * 50));
+          b = Math.max(100, Math.floor(190 - depth * 30));
         }
         
+        // Гарантируем корректные значения
+        data[idx] = Math.max(0, Math.min(255, r));
+        data[idx + 1] = Math.max(0, Math.min(255, g));
+        data[idx + 2] = Math.max(0, Math.min(255, b));
         data[idx + 3] = 255;
       }
     }
+    
+    console.log(`Generated chunk texture with first pixel: rgba(${data[0]}, ${data[1]}, ${data[2]}, ${data[3]})`);
   }
 
   private generateFallbackTexture(chunk: ChunkData): void {

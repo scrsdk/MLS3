@@ -47,7 +47,10 @@ export class OffscreenRenderer {
   };
 
   constructor(width: number, height: number) {
+    console.log('OffscreenRenderer constructor', { width, height });
     this.initializeCanvas(width, height);
+    // Принудительно создаем тестовые данные
+    setTimeout(() => this.initializeWithTestData(), 50);
   }
 
   private initializeCanvas(width: number, height: number): void {
@@ -124,6 +127,8 @@ export class OffscreenRenderer {
     const taskId = `render_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const priority = this.calculatePriority(viewport);
     
+    console.log(`queueRender: Queuing task ${taskId} with ${chunks.length} chunks`);
+    
     const task: RenderTask = {
       id: taskId,
       viewport: { ...viewport },
@@ -139,6 +144,8 @@ export class OffscreenRenderer {
     
     this.renderQueue.push(task);
     this.renderQueue.sort((a, b) => b.priority - a.priority);
+    
+    console.log(`queueRender: Queue now has ${this.renderQueue.length} tasks`);
     
     this.scheduleRender();
     return taskId;
@@ -197,21 +204,44 @@ export class OffscreenRenderer {
    */
   renderToCanvas(targetCanvas: HTMLCanvasElement): void {
     try {
-      if (!this.frontBuffer || !targetCanvas) return;
+      if (!this.frontBuffer || !targetCanvas) {
+        console.warn('No buffer or canvas for rendering');
+        return;
+      }
       
       const targetCtx = targetCanvas.getContext('2d');
-      if (!targetCtx) return;
+      if (!targetCtx) {
+        console.warn('Cannot get canvas 2d context');
+        return;
+      }
       
       // Проверяем размеры
-      if (targetCanvas.width === 0 || targetCanvas.height === 0) return;
-      if (this.bufferWidth === 0 || this.bufferHeight === 0) return;
+      if (targetCanvas.width === 0 || targetCanvas.height === 0) {
+        console.warn('Target canvas has zero dimensions');
+        return;
+      }
+      if (this.bufferWidth === 0 || this.bufferHeight === 0) {
+        console.warn('Buffer has zero dimensions');
+        return;
+      }
+      
+      // Проверяем, есть ли данные в буфере
+      const hasData = this.frontBuffer.data.some(value => value > 0);
+      if (!hasData) {
+        console.warn('Buffer is empty, filling with test pattern');
+        // Заполняем тестовым паттерном для отладки
+        this.fillTestPattern();
+      }
       
       // Создаем временный canvas для ImageData
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = this.bufferWidth;
       tempCanvas.height = this.bufferHeight;
       const tempCtx = tempCanvas.getContext('2d');
-      if (!tempCtx) return;
+      if (!tempCtx) {
+        console.warn('Cannot get temp canvas context');
+        return;
+      }
       
       tempCtx.putImageData(this.frontBuffer, 0, 0);
       
@@ -222,8 +252,13 @@ export class OffscreenRenderer {
         0, 0, this.bufferWidth, this.bufferHeight,
         0, 0, targetCanvas.width, targetCanvas.height
       );
+      
+      console.log('Rendered to canvas:', {
+        bufferSize: `${this.bufferWidth}x${this.bufferHeight}`,
+        canvasSize: `${targetCanvas.width}x${targetCanvas.height}`
+      });
     } catch (error) {
-      console.warn('Ошибка при рендере на canvas:', error);
+      console.error('Ошибка при рендере на canvas:', error);
     }
   }
 
@@ -287,15 +322,26 @@ export class OffscreenRenderer {
 
   private renderTask(task: RenderTask): void {
     try {
-      if (!this.backBuffer || !task) return;
+      if (!this.backBuffer || !task) {
+        console.warn('renderTask: Missing buffer or task');
+        return;
+      }
       
       const { viewport, chunks } = task;
-      if (!viewport || !chunks) return;
+      if (!viewport) {
+        console.warn('renderTask: Missing viewport');
+        return;
+      }
       
       const imageData = this.backBuffer;
       const data = imageData.data;
       
-      if (!data || data.length === 0) return;
+      if (!data || data.length === 0) {
+        console.warn('renderTask: Invalid image data');
+        return;
+      }
+      
+      console.log(`renderTask: Rendering ${chunks?.length || 0} chunks for viewport`, viewport);
       
       // Очищаем буфер
       data.fill(0);
@@ -304,8 +350,21 @@ export class OffscreenRenderer {
       this.fillBackground(data, '#0a0e27');
       
       // Рендерим чанки
-      if (chunks.length > 0) {
+      if (chunks && chunks.length > 0) {
+        console.log('renderTask: Rendering chunks');
         this.renderChunks(data, chunks, viewport);
+      } else {
+        console.log('renderTask: No chunks to render, filling with test pattern');
+        // Если нет чанков, заполняем тестовым паттерном
+        for (let i = 0; i < data.length; i += 4) {
+          const x = Math.floor((i / 4) % this.bufferWidth);
+          const y = Math.floor((i / 4) / this.bufferWidth);
+          
+          data[i] = (x * 255) / this.bufferWidth;     // R
+          data[i + 1] = (y * 255) / this.bufferHeight; // G
+          data[i + 2] = 100;                           // B
+          data[i + 3] = 255;                           // A
+        }
       }
       
       // Добавляем сетку при большом зуме
@@ -314,11 +373,13 @@ export class OffscreenRenderer {
       }
       
       // Добавляем границы чанков в debug режиме
-      if (process.env.NODE_ENV === 'development' && chunks.length > 0) {
+      if (process.env.NODE_ENV === 'development' && chunks && chunks.length > 0) {
         this.renderChunkBorders(data, chunks, viewport);
       }
+      
+      console.log('renderTask: Task completed successfully');
     } catch (error) {
-      console.warn('Ошибка в renderTask:', error);
+      console.error('Ошибка в renderTask:', error);
     }
   }
 
@@ -533,6 +594,60 @@ export class OffscreenRenderer {
     this.renderStats.framesRendered++;
     this.renderStats.averageRenderTime = 
       (this.renderStats.averageRenderTime * 0.9) + (renderTime * 0.1);
+  }
+
+  private initializeWithTestData(): void {
+    console.log('Initializing with test data');
+    if (!this.backBuffer) {
+      console.warn('No back buffer available for test data');
+      return;
+    }
+    
+    // Создаем тестовый viewport и чанки
+    const testViewport = {
+      minX: 0,
+      minY: 0,
+      maxX: 800,
+      maxY: 600,
+      zoom: 1
+    };
+    
+    // Создаем пустой чанк
+    const testChunks: any[] = [];
+    
+    // Создаем тестовую задачу рендеринга
+    const testTask = {
+      id: 'test-task',
+      viewport: testViewport,
+      chunks: testChunks,
+      timestamp: performance.now(),
+      priority: 100
+    };
+    
+    console.log('Rendering test task');
+    this.renderTask(testTask);
+    this.swapBuffers();
+    console.log('Test data initialization complete');
+  }
+
+  private fillTestPattern(): void {
+    if (!this.frontBuffer) return;
+    
+    const data = this.frontBuffer.data;
+    
+    // Заполняем градиентом для тестирования
+    for (let y = 0; y < this.bufferHeight; y++) {
+      for (let x = 0; x < this.bufferWidth; x++) {
+        const idx = (y * this.bufferWidth + x) * 4;
+        const gradientX = x / this.bufferWidth;
+        const gradientY = y / this.bufferHeight;
+        
+        data[idx] = Math.floor(gradientX * 255);     // R
+        data[idx + 1] = Math.floor(gradientY * 255); // G
+        data[idx + 2] = 100;                         // B
+        data[idx + 3] = 255;                         // A
+      }
+    }
   }
 
   private hexToRgb(hex: string): { r: number; g: number; b: number } | null {
