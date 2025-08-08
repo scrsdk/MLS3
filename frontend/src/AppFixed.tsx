@@ -4,6 +4,7 @@ import { useGameStore } from './store/gameStore';
 import { useTelegram } from './hooks/useTelegram';
 import { authAPI, gameAPI } from './services/api';
 import wsService from './services/websocket';
+import { SimpleWorldMap } from './components/Map/SimpleWorldMap';
 import './locales/i18n';
 
 function AppFixed() {
@@ -242,24 +243,14 @@ function AppFixed() {
       }}>
         {selectedCountry ? (
           <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '15px',
-            padding: '30px',
-            textAlign: 'center',
-            maxWidth: '500px',
-            width: '100%'
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: '10px',
+            overflow: 'hidden'
           }}>
-            <div style={{ fontSize: '60px', marginBottom: '20px' }}>🗺️</div>
-            <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>
-              Карта в разработке
-            </h2>
-            <p style={{ fontSize: '14px', opacity: 0.8, marginBottom: '20px' }}>
-              Страна выбрана: {selectedCountry.nameRu}
-            </p>
-            <p style={{ fontSize: '12px', opacity: 0.6 }}>
-              Интерактивная карта мира скоро будет доступна.<br/>
-              Вы сможете захватывать территории и защищать свою страну!
-            </p>
+            <SimpleWorldMap />
           </div>
         ) : (
           <div style={{
