@@ -219,18 +219,26 @@ export const useMapStore = create<MapState>()(
     },
     
     cleanupRendering: () => {
-      const state = get();
-      
-      state.chunkSystem?.cleanup();
-      state.offscreenRenderer?.cleanup();
-      
-      set({
-        chunkSystem: null,
-        offscreenRenderer: null,
-        isInitialized: false,
-        loadedChunks: new Set(),
-        visibleChunks: []
-      });
+      try {
+        const state = get();
+        
+        if (state.chunkSystem) {
+          state.chunkSystem.cleanup();
+        }
+        if (state.offscreenRenderer) {
+          state.offscreenRenderer.cleanup();
+        }
+        
+        set({
+          chunkSystem: null,
+          offscreenRenderer: null,
+          isInitialized: false,
+          loadedChunks: new Set(),
+          visibleChunks: []
+        });
+      } catch (error) {
+        console.warn('Ошибка при очистке рендеринга:', error);
+      }
     },
     
     updateSettings: (newSettings) => {
@@ -384,43 +392,62 @@ export const useMapStore = create<MapState>()(
     
     // Приватный метод для обновления видимых чанков
     updateVisibleChunks: () => {
-      const state = get();
-      
-      if (!state.chunkSystem || !state.offscreenRenderer) return;
-      
-      const { viewport } = state;
-      const viewportBounds: ViewportBounds = {
-        minX: viewport.x,
-        minY: viewport.y,
-        maxX: viewport.x + viewport.width / viewport.zoom,
-        maxY: viewport.y + viewport.height / viewport.zoom,
-        zoom: viewport.zoom
-      };
-      
-      // Получаем необходимые чанки
-      const chunks = state.chunkSystem.getRequiredChunks(viewportBounds);
-      const loadedChunkIds = new Set(
-        chunks
-          .filter(chunk => chunk.imageData)
-          .map(chunk => chunk.id)
-      );
-      
-      set({
-        visibleChunks: chunks,
-        loadedChunks: loadedChunkIds
-      });
-      
-      // Запускаем рендеринг
-      state.offscreenRenderer.queueRender(viewportBounds, chunks);
-      
-      // Предзагружаем окружающие чанки
-      state.chunkSystem.preloadSurroundingChunks(viewportBounds);
-      
-      // Обновляем статистику производительности
-      state.updatePerformance({
-        chunksLoaded: loadedChunkIds.size,
-        chunksVisible: chunks.length
-      });
+      try {
+        const state = get();
+        
+        if (!state.chunkSystem || !state.offscreenRenderer || !state.isInitialized) return;
+        
+        const { viewport } = state;
+        if (!viewport || !isFinite(viewport.x) || !isFinite(viewport.y) || !isFinite(viewport.zoom)) {
+          return;
+        }
+        
+        const viewportBounds: ViewportBounds = {
+          minX: viewport.x,
+          minY: viewport.y,
+          maxX: viewport.x + viewport.width / viewport.zoom,
+          maxY: viewport.y + viewport.height / viewport.zoom,
+          zoom: viewport.zoom
+        };
+        
+        // Проверяем корректность bounds
+        if (!isFinite(viewportBounds.maxX) || !isFinite(viewportBounds.maxY)) {
+          return;
+        }
+        
+        // Получаем необходимые чанки
+        const chunks = state.chunkSystem.getRequiredChunks(viewportBounds);
+        if (!chunks || !Array.isArray(chunks)) return;
+        
+        const loadedChunkIds = new Set(
+          chunks
+            .filter(chunk => chunk && chunk.imageData)
+            .map(chunk => chunk.id)
+        );
+        
+        set({
+          visibleChunks: chunks,
+          loadedChunks: loadedChunkIds
+        });
+        
+        // Запускаем рендеринг
+        if (state.offscreenRenderer && chunks.length > 0) {
+          state.offscreenRenderer.queueRender(viewportBounds, chunks);
+        }
+        
+        // Предзагружаем окружающие чанки
+        if (state.chunkSystem) {
+          state.chunkSystem.preloadSurroundingChunks(viewportBounds);
+        }
+        
+        // Обновляем статистику производительности
+        state.updatePerformance({
+          chunksLoaded: loadedChunkIds.size,
+          chunksVisible: chunks.length
+        });
+      } catch (error) {
+        console.warn('Ошибка при обновлении чанков:', error);
+      }
     }
   }))
 );

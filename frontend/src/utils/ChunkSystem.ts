@@ -177,13 +177,24 @@ export class ChunkSystem {
    * Освобождает ресурсы
    */
   cleanup(): void {
-    this.pendingRequests.forEach(controller => controller.abort());
-    this.pendingRequests.clear();
-    this.chunks.clear();
-    this.loadingQueue.clear();
-    
-    if (this.loadTimeout) {
-      clearTimeout(this.loadTimeout);
+    try {
+      this.pendingRequests.forEach(controller => {
+        try {
+          controller.abort();
+        } catch (error) {
+          console.warn('Ошибка при отмене запроса:', error);
+        }
+      });
+      this.pendingRequests.clear();
+      this.chunks.clear();
+      this.loadingQueue.clear();
+      
+      if (this.loadTimeout) {
+        clearTimeout(this.loadTimeout);
+        this.loadTimeout = null;
+      }
+    } catch (error) {
+      console.warn('Ошибка при очистке ChunkSystem:', error);
     }
   }
 
@@ -246,16 +257,25 @@ export class ChunkSystem {
       // Загружаем данные чанка
       const chunkData = await this.fetchChunkData(chunk.x, chunk.y, chunk.zoom, controller.signal);
       
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && chunkData) {
         chunk.imageData = chunkData;
         chunk.isLoading = false;
       }
     } catch (error) {
       if (!controller.signal.aborted) {
+        // Игнорируем AbortError - это нормальное поведение
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        
         console.warn(`Failed to load chunk ${chunk.id}:`, error);
         // Создаем пустой чанк для предотвращения повторных попыток
-        chunk.imageData = new ImageData(this.CHUNK_SIZE, this.CHUNK_SIZE);
-        this.generateFallbackTexture(chunk);
+        try {
+          chunk.imageData = new ImageData(this.CHUNK_SIZE, this.CHUNK_SIZE);
+          this.generateFallbackTexture(chunk);
+        } catch (fallbackError) {
+          console.warn('Ошибка при создании fallback текстуры:', fallbackError);
+        }
         chunk.isLoading = false;
       }
     } finally {

@@ -8,11 +8,19 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 
 // Глобальный обработчик ошибок
 window.addEventListener('error', (event) => {
+  // Игнорируем null ошибки, которые могут возникать в некоторых браузерах
+  if (event.error === null || event.error === undefined) {
+    return;
+  }
   console.error('🔴 Global error:', event.error);
   console.error('Stack:', event.error?.stack);
 });
 
 window.addEventListener('unhandledrejection', (event) => {
+  // Игнорируем пустые rejections
+  if (event.reason === null || event.reason === undefined) {
+    return;
+  }
   console.error('🔴 Unhandled promise rejection:', event.reason);
 });
 

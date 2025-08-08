@@ -72,15 +72,24 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    initializeRendering(canvas);
+    try {
+      initializeRendering(canvas);
+    } catch (error) {
+      console.error('Ошибка при инициализации карты:', error);
+    }
     
     return () => {
-      cleanupRendering();
+      try {
+        cleanupRendering();
+      } catch (error) {
+        console.warn('Ошибка при очистке карты:', error);
+      }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = 0;
       }
     };
-  }, []);
+  }, [initializeRendering, cleanupRendering]);
 
   // Обработка изменения размеров
   useEffect(() => {
@@ -124,29 +133,58 @@ export const OptimizedPixelMap: React.FC<Props> = ({
   // Главный цикл рендеринга
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !offscreenRenderer) return;
-    
-    const now = window.performance.now();
-    const deltaTime = now - lastRenderTime.current;
-    
-    // Ограничиваем FPS до 60
-    if (deltaTime >= 16.67) {
-      offscreenRenderer.renderToCanvas(canvas);
-      lastRenderTime.current = now;
+    if (!canvas || !offscreenRenderer || !isInitialized) {
+      // Очищаем animationFrame если рендерер не готов
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = 0;
+      }
+      return;
     }
     
-    animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [offscreenRenderer]);
+    try {
+      const now = window.performance.now();
+      const deltaTime = now - lastRenderTime.current;
+      
+      // Ограничиваем FPS до 60
+      if (deltaTime >= 16.67) {
+        offscreenRenderer.renderToCanvas(canvas);
+        lastRenderTime.current = now;
+      }
+      
+      // Только запускаем следующий кадр если все еще инициализированы
+      if (isInitialized && offscreenRenderer) {
+        animationFrameRef.current = requestAnimationFrame(renderLoop);
+      }
+    } catch (error) {
+      console.warn('Ошибка в renderLoop, останавливаем рендеринг:', error);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = 0;
+      }
+    }
+  }, [offscreenRenderer, isInitialized]);
   
   // Запуск цикла рендеринга
   useEffect(() => {
     if (isInitialized && offscreenRenderer) {
-      renderLoop();
+      // Отменяем предыдущий цикл перед запуском нового
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = 0;
+      }
+      
+      try {
+        renderLoop();
+      } catch (error) {
+        console.error('Ошибка при запуске renderLoop:', error);
+      }
     }
     
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = 0;
       }
     };
   }, [isInitialized, offscreenRenderer, renderLoop]);
@@ -187,7 +225,10 @@ export const OptimizedPixelMap: React.FC<Props> = ({
   }, []);
   
   const handleMouseWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
+    // preventDefault вызывается только при необходимости
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+    }
     
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -226,7 +267,8 @@ export const OptimizedPixelMap: React.FC<Props> = ({
   
   // Touch события для мобильных
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
+    // Не используем preventDefault для passive listeners
+    // e.preventDefault();
     
     const now = Date.now();
     const touch = e.touches[0];
@@ -268,7 +310,8 @@ export const OptimizedPixelMap: React.FC<Props> = ({
   }, [touchState.lastTouchTime, handleDoubleClick]);
   
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
+    // Не используем preventDefault для passive listeners
+    // e.preventDefault();
     
     if (e.touches.length === 1 && dragState.isDragging && !touchState.isPinching) {
       const touch = e.touches[0];
@@ -359,7 +402,7 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     <div 
       ref={containerRef}
       className={`relative w-full h-full overflow-hidden bg-gray-900 ${className}`}
-      style={{ touchAction: 'none' }}
+      style={{ touchAction: 'manipulation' }}
     >
       {/* Основной canvas карты */}
       <canvas

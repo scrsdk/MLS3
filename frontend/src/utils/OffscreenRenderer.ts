@@ -81,10 +81,24 @@ export class OffscreenRenderer {
   }
 
   private initializeBuffers(width: number, height: number): void {
-    this.bufferWidth = width;
-    this.bufferHeight = height;
-    this.frontBuffer = new ImageData(width, height);
-    this.backBuffer = new ImageData(width, height);
+    try {
+      // Проверяем, что размеры корректны
+      if (width <= 0 || height <= 0 || width > 8192 || height > 8192) {
+        console.warn('Некорректные размеры буфера:', width, height);
+        return;
+      }
+      
+      this.bufferWidth = Math.floor(width);
+      this.bufferHeight = Math.floor(height);
+      this.frontBuffer = new ImageData(this.bufferWidth, this.bufferHeight);
+      this.backBuffer = new ImageData(this.bufferWidth, this.bufferHeight);
+    } catch (error) {
+      console.error('Ошибка при создании буферов:', error);
+      this.bufferWidth = 800;
+      this.bufferHeight = 600;
+      this.frontBuffer = new ImageData(800, 600);
+      this.backBuffer = new ImageData(800, 600);
+    }
   }
 
   /**
@@ -118,15 +132,25 @@ export class OffscreenRenderer {
    * Изменяет размер рендерера
    */
   resize(width: number, height: number): void {
-    if (this.bufferWidth === width && this.bufferHeight === height) return;
-    
-    this.offscreenCanvas.width = width;
-    this.offscreenCanvas.height = height;
-    this.initializeBuffers(width, height);
-    
-    // Отменяем текущие задачи, так как размер изменился
-    this.renderQueue = [];
-    this.currentTask = null;
+    try {
+      if (this.bufferWidth === width && this.bufferHeight === height) return;
+      
+      // Проверяем корректность размеров
+      if (width <= 0 || height <= 0 || !isFinite(width) || !isFinite(height)) {
+        console.warn('Некорректные размеры для resize:', width, height);
+        return;
+      }
+      
+      this.offscreenCanvas.width = Math.floor(width);
+      this.offscreenCanvas.height = Math.floor(height);
+      this.initializeBuffers(width, height);
+      
+      // Отменяем текущие задачи, так как размер изменился
+      this.renderQueue = [];
+      this.currentTask = null;
+    } catch (error) {
+      console.error('Ошибка при изменении размера:', error);
+    }
   }
 
   /**
@@ -147,26 +171,35 @@ export class OffscreenRenderer {
    * Рендерит содержимое на целевой canvas
    */
   renderToCanvas(targetCanvas: HTMLCanvasElement): void {
-    if (!this.frontBuffer) return;
-    
-    const targetCtx = targetCanvas.getContext('2d');
-    if (!targetCtx) return;
-    
-    // Создаем временный canvas для ImageData
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = this.bufferWidth;
-    tempCanvas.height = this.bufferHeight;
-    const tempCtx = tempCanvas.getContext('2d')!;
-    
-    tempCtx.putImageData(this.frontBuffer, 0, 0);
-    
-    // Отрисовываем с масштабированием на целевой canvas
-    targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
-    targetCtx.drawImage(
-      tempCanvas,
-      0, 0, this.bufferWidth, this.bufferHeight,
-      0, 0, targetCanvas.width, targetCanvas.height
-    );
+    try {
+      if (!this.frontBuffer || !targetCanvas) return;
+      
+      const targetCtx = targetCanvas.getContext('2d');
+      if (!targetCtx) return;
+      
+      // Проверяем размеры
+      if (targetCanvas.width === 0 || targetCanvas.height === 0) return;
+      if (this.bufferWidth === 0 || this.bufferHeight === 0) return;
+      
+      // Создаем временный canvas для ImageData
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = this.bufferWidth;
+      tempCanvas.height = this.bufferHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) return;
+      
+      tempCtx.putImageData(this.frontBuffer, 0, 0);
+      
+      // Отрисовываем с масштабированием на целевой canvas
+      targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+      targetCtx.drawImage(
+        tempCanvas,
+        0, 0, this.bufferWidth, this.bufferHeight,
+        0, 0, targetCanvas.width, targetCanvas.height
+      );
+    } catch (error) {
+      console.warn('Ошибка при рендере на canvas:', error);
+    }
   }
 
   /**
@@ -228,29 +261,39 @@ export class OffscreenRenderer {
   }
 
   private renderTask(task: RenderTask): void {
-    if (!this.backBuffer) return;
-    
-    const { viewport, chunks } = task;
-    const imageData = this.backBuffer;
-    const data = imageData.data;
-    
-    // Очищаем буфер
-    data.fill(0);
-    
-    // Заливаем фон космическим цветом
-    this.fillBackground(data, '#0a0e27');
-    
-    // Рендерим чанки
-    this.renderChunks(data, chunks, viewport);
-    
-    // Добавляем сетку при большом зуме
-    if (viewport.zoom > 4) {
-      this.renderGrid(data, viewport);
-    }
-    
-    // Добавляем границы чанков в debug режиме
-    if (process.env.NODE_ENV === 'development') {
-      this.renderChunkBorders(data, chunks, viewport);
+    try {
+      if (!this.backBuffer || !task) return;
+      
+      const { viewport, chunks } = task;
+      if (!viewport || !chunks) return;
+      
+      const imageData = this.backBuffer;
+      const data = imageData.data;
+      
+      if (!data || data.length === 0) return;
+      
+      // Очищаем буфер
+      data.fill(0);
+      
+      // Заливаем фон космическим цветом
+      this.fillBackground(data, '#0a0e27');
+      
+      // Рендерим чанки
+      if (chunks.length > 0) {
+        this.renderChunks(data, chunks, viewport);
+      }
+      
+      // Добавляем сетку при большом зуме
+      if (viewport.zoom > 4) {
+        this.renderGrid(data, viewport);
+      }
+      
+      // Добавляем границы чанков в debug режиме
+      if (process.env.NODE_ENV === 'development' && chunks.length > 0) {
+        this.renderChunkBorders(data, chunks, viewport);
+      }
+    } catch (error) {
+      console.warn('Ошибка в renderTask:', error);
     }
   }
 
