@@ -4,7 +4,7 @@ import { useGameStore } from './store/gameStore';
 import { useTelegram } from './hooks/useTelegram';
 import { authAPI, gameAPI } from './services/api';
 import wsService from './services/websocket';
-import { SimpleWorldMap } from './components/Map/SimpleWorldMap';
+import { PixelWorldMap } from './components/Map/PixelWorldMap';
 import './locales/i18n';
 
 function AppFixed() {
@@ -250,7 +250,7 @@ function AppFixed() {
             borderRadius: '10px',
             overflow: 'hidden'
           }}>
-            <SimpleWorldMap />
+            <PixelWorldMap />
           </div>
         ) : (
           <div style={{
