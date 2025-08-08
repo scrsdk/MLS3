@@ -10,12 +10,14 @@ const prisma = new PrismaClient();
 router.post('/telegram', async (req, res, next) => {
   try {
     const { initData } = req.body;
+    console.log('Auth request received, initData length:', initData?.length);
 
     if (!initData) {
       throw new AppError('Init data required', 400);
     }
 
     const telegramUser = validateTelegramWebAppData(initData);
+    console.log('Telegram user validated:', telegramUser);
     
     if (!telegramUser) {
       throw new AppError('Invalid init data', 401);

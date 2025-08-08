@@ -17,9 +17,14 @@ export const validateTelegramWebAppData = (initData: string): TelegramUser | nul
     
     if (testData.user && testData.hash === 'test_hash') {
       console.log('Test user detected, bypassing validation');
-      return testData.user;
+      // Убеждаемся что id это число
+      return {
+        ...testData.user,
+        id: typeof testData.user.id === 'string' ? parseInt(testData.user.id) : testData.user.id
+      };
     }
-  } catch {
+  } catch (error) {
+    console.log('Not test data, continuing with normal validation');
     // Не тестовые данные, продолжаем обычную валидацию
   }
 
