@@ -5,7 +5,7 @@ import { GameWorldMap } from './components/Map/GameWorldMap';
 import { CountrySelect } from './components/CountrySelect';
 import { EnergyBar } from './components/UI/EnergyBar';
 import { GameHeader } from './components/UI/GameHeader';
-import { BackgroundEffects } from './components/UI/BackgroundEffects';
+import { SafeBackgroundEffects } from './components/UI/SafeBackgroundEffects';
 import { GlassCard } from './components/UI/GlassCard';
 import { NeonButton } from './components/UI/NeonButton';
 import { useGameStore } from './store/gameStore';
@@ -15,8 +15,13 @@ import wsService from './services/websocket';
 import './locales/i18n';
 
 function App() {
+  console.log('📱 App component rendering...');
+  
   const { t } = useTranslation();
   const { webApp, user: tgUser, initData } = useTelegram();
+  
+  console.log('📱 Telegram data:', { webApp: !!webApp, tgUser, initData: !!initData });
+  
   const {
     user,
     selectedCountry,
@@ -39,6 +44,8 @@ function App() {
   useEffect(() => {
     const init = async () => {
       console.log('🚀 App init started');
+      console.log('🔍 Current state:', { isLoading, error, user, selectedCountry });
+      
       try {
         setLoading(true);
         
@@ -128,7 +135,7 @@ function App() {
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-gray-900 overflow-hidden">
-        <BackgroundEffects intensity="low" />
+        <SafeBackgroundEffects intensity="low" />
         <motion.div
           className="flex items-center justify-center h-screen"
           initial={{ opacity: 0 }}
@@ -181,7 +188,7 @@ function App() {
   if (error) {
     return (
       <div className="fixed inset-0 bg-gray-900 overflow-hidden">
-        <BackgroundEffects intensity="low" />
+        <SafeBackgroundEffects intensity="low" />
         <motion.div
           className="flex items-center justify-center h-screen"
           initial={{ opacity: 0 }}
@@ -242,7 +249,7 @@ function App() {
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-900 relative overflow-hidden" style={{ position: 'fixed', top: 0, left: 0 }}>
       {/* Background Effects */}
-      <BackgroundEffects intensity="low" />
+      <SafeBackgroundEffects intensity="low" />
       
       {/* Game Header */}
       <motion.div
