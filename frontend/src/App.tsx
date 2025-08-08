@@ -93,14 +93,14 @@ function App() {
 
         console.log('✅ Initialization complete!');
         setLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error('❌ Init error:', err);
         console.error('Error details:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status
+          message: err?.message,
+          response: err?.response?.data,
+          status: err?.response?.status
         });
-        setError(`Ошибка: ${err.message || 'Неизвестная ошибка'}`);
+        setError(`Ошибка: ${err?.message || 'Неизвестная ошибка'}`);
         setLoading(false);
       }
     };
@@ -159,7 +159,7 @@ function App() {
             </span>
           )}
         </div>
-        {user && <EnergyBar energy={user.energy} maxEnergy={user.maxEnergy} />}
+        {user && <EnergyBar />}
       </div>
 
       {/* Main Content */}
