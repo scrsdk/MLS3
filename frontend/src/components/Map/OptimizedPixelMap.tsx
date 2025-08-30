@@ -57,7 +57,8 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     placePixel,
     performance,
     settings,
-    isInitialized // isInitialized - функция из useMapStore
+    isInitialized,
+    setIsInitialized
   } = useMapStore();
 
   // Game store
@@ -118,7 +119,7 @@ export const OptimizedPixelMap: React.FC<Props> = ({
 
       // Инициализация rendering
       initializeRendering(canvas);
-      isInitialized(true); // Устанавливаем isInitialized в true после initializeRendering
+      setIsInitialized(true); // Устанавливаем isInitialized в true после initializeRendering
 
       // Добавляем обработчик wheel с passive: false для возможности preventDefault
       const wheelHandler = (e: WheelEvent) => {
