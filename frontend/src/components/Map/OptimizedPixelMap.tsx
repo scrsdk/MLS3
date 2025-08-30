@@ -57,9 +57,9 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     placePixel,
     performance,
     settings,
-    isInitialized
+    isInitialized // isInitialized - функция из useMapStore
   } = useMapStore();
-  
+
   // Game store
   const {
     selectedCountry,
@@ -71,28 +71,28 @@ export const OptimizedPixelMap: React.FC<Props> = ({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     console.log('OptimizedPixelMap: Starting initialization');
-    
+
     try {
       // Сначала убедимся что canvas имеет правильные размеры
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
       canvas.height = rect.height * window.devicePixelRatio;
-      
+
       // Рисуем начальный фон чтобы убедиться что canvas работает
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        
+
         // Темный фон
         ctx.fillStyle = '#0a0e27';
         ctx.fillRect(0, 0, rect.width, rect.height);
-        
+
         // Сетка
         ctx.strokeStyle = 'rgba(0, 212, 255, 0.05)';
         ctx.lineWidth = 1;
-        
+
         const gridSize = 50;
         for (let x = 0; x < rect.width; x += gridSize) {
           ctx.beginPath();
@@ -100,14 +100,14 @@ export const OptimizedPixelMap: React.FC<Props> = ({
           ctx.lineTo(x, rect.height);
           ctx.stroke();
         }
-        
+
         for (let y = 0; y < rect.height; y += gridSize) {
           ctx.beginPath();
           ctx.moveTo(0, y);
           ctx.lineTo(rect.width, y);
           ctx.stroke();
         }
-        
+
         // Текст загрузки
         ctx.fillStyle = '#00d4ff';
         ctx.font = '20px monospace';
@@ -115,10 +115,11 @@ export const OptimizedPixelMap: React.FC<Props> = ({
         ctx.textBaseline = 'middle';
         ctx.fillText('Инициализация карты мира...', rect.width / 2, rect.height / 2);
       }
-      
+
+      // Инициализация rendering
       initializeRendering(canvas);
-      isInitialized(true);
-      
+      isInitialized(true); // Устанавливаем isInitialized в true после initializeRendering
+
       // Добавляем обработчик wheel с passive: false для возможности preventDefault
       const wheelHandler = (e: WheelEvent) => {
         e.preventDefault();
@@ -127,18 +128,18 @@ export const OptimizedPixelMap: React.FC<Props> = ({
         const centerY = e.clientY - rect.top;
         handleWheel(e.deltaY, centerX, centerY);
       };
-      
+
       canvas.addEventListener('wheel', wheelHandler, { passive: false });
-      
+
       // Принудительная инициализация карты через несколько мс
       setTimeout(() => {
         console.log('OptimizedPixelMap: Force triggering rendering setup');
-        if (!isInitialized) {
+        if (!isInitialized()) { // Проверяем состояние через вызов функции
           console.warn('Map not initialized after timeout, trying again...');
           initializeRendering(canvas);
         }
       }, 200);
-      
+
       return () => {
         console.log('OptimizedPixelMap: Cleaning up');
         canvas.removeEventListener('wheel', wheelHandler);
