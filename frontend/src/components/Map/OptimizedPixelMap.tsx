@@ -117,7 +117,7 @@ export const OptimizedPixelMap: React.FC<Props> = ({
       }
       
       initializeRendering(canvas);
-      IsInitialized(true);
+      isInitialized(true);
       
       // Добавляем обработчик wheel с passive: false для возможности preventDefault
       const wheelHandler = (e: WheelEvent) => {
