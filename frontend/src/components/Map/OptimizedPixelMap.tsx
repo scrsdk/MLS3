@@ -57,8 +57,7 @@ export const OptimizedPixelMap: React.FC<Props> = ({
     placePixel,
     performance,
     settings,
-    isInitialized,
-    setIsInitialized
+    isInitialized
   } = useMapStore();
 
   // Game store
